@@ -39,8 +39,9 @@ class Instance:
         self.instance_id = id
         self.instance_name = name
         self.instance_status = status
+        self.button = None
         if previous_instance == None:
-            self.x = 100
+            self.x = 250
         else:
             self.x = previous_instance.x
         if previous_instance == None:
@@ -54,7 +55,7 @@ class Instance:
         else:
             fill = "black"
         canvas.create_text(self.x, self.y, text=self.instance_id, fill="black", font=('Helvetica 15 bold'), tag=self.instance_id)
-        canvas.create_text(self.x+300, self.y, text=self.instance_name, fill="black", font=('Helvetica 15 bold'), tag=self.instance_id)
+        canvas.create_text(self.x+400, self.y, text=self.instance_name, fill="black", font=('Helvetica 15 bold'), tag=self.instance_id)
         canvas.create_text(self.x+700, self.y, text=self.instance_status, fill=fill, font=('Helvetica 15 bold'), tag=self.instance_id)
         canvas.pack()
 
@@ -62,50 +63,47 @@ class Instance:
         canvas.delete(self)
     
     def addInstanceControl(self, canvas):
-        def startInstance():
-            response = ec2.start_instances(
-                InstanceIds=[self.instance_id]
-            )
-            self.updateInstance()
-
-        def stopInstance():
-            response = ec2.stop_instances(
-                InstanceIds=[self.instance_id]
-            )
-            self.updateInstance()
-
         text = None
-        command = None
         if self.instance_status == "running":
-            text = "Stop"
-            command = stopInstance
+                text = "Stop"
         if self.instance_status == "stopped":
             text = "Start"
-            command = startInstance
-        button = Button(canvas, text=text, command=command)
-        button.place(x=self.x+800, y=self.y-10)
+        if self.instance_status == "stopping" or self.instance_status == "pending":
+            text = "Please Wait"
+        
+        def instanceControl():
+            if self.instance_status == "running":
+                response = ec2.stop_instances(
+                    InstanceIds=[self.instance_id]
+                )
+            if self.instance_status == "stopped":
+                response = ec2.start_instances(
+                    InstanceIds=[self.instance_id]
+                )
+            self.updateInstanceDisplay()        
+
+        self.button = Button(canvas, text=text, command=instanceControl)
+        self.button.place(x=self.x+800, y=self.y-10)
     
-    def updateInstance(self):
-        time.sleep(0.5)
+    def updateInstanceDisplay(self):
+        print("updating...")
+        time.sleep(1)
         updated_status = ec2.describe_instances(
             InstanceIds=[self.instance_id],
         )
         self.instance_status = updated_status['Reservations'][0]['Instances'][0]['State']['Name']
+        print(self.instance_status)
         self.win.removeEntry(self.instance_id)
         self.win.addText(self)
         self.win.addControls(self)
-        self.win.redraw()
-
+        if self.instance_status == "stopping" or self.instance_status == "pending":
+            self.updateInstanceDisplay()
         
 ec2 = boto3.client('ec2')
 
 instances = ec2.describe_instances(
     Filters=[
         {
-            # 'Name':'instance-state-name',
-            # 'Values': [
-            #     'running',
-            # ],
             'Name':'tag:Service Channel',
             'Values': [
                 'Staging',
@@ -119,8 +117,10 @@ instances = ec2.describe_instances(
     
 awsApp = Window(1280, 720)
 
+# Master instance list
 instance_list = []
 
+# Initial enumeration of instances. 
 for instance in instances['Reservations']:
     name = None
     for value in instance['Instances'][0]['Tags']:
@@ -128,7 +128,6 @@ for instance in instances['Reservations']:
             name = value
     previous_instance = None
     if instances['Reservations'].index(instance)-1 >= 0:
-        # This can't point to the object but to a list of instances
         previous_instance = instance_list[instances['Reservations'].index(instance)-1]
     new_instance = Instance(
         awsApp,
@@ -137,19 +136,13 @@ for instance in instances['Reservations']:
         instance['Instances'][0]['State']['Name'],
         previous_instance
         )
-
     instance_list.append(new_instance)
     awsApp.addText(new_instance)
     awsApp.addControls(new_instance)
-      
-    # print(name['Value'])        
-    # print(instance['Instances'][0]['InstanceId'])
-    # print(instance['Instances'][0]['State']['Name'])
-
-# single_test = ec2.describe_instances(
-#             InstanceIds=["i-0d84f237abd65d0d3"],
-#         )
-# print(single_test['Reservations'][0]['Instances'][0]['State']['Name'])
+    # Printing to the CLI for backup  
+    print(name['Value'])        
+    print(instance['Instances'][0]['InstanceId'])
+    print(instance['Instances'][0]['State']['Name'])
 
 awsApp.wait_for_close()
 
