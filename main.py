@@ -1,11 +1,16 @@
 from tkinter import *
+import customtkinter
 import time
 import boto3
 
+customtkinter.set_appearance_mode("dark") 
+customtkinter.set_default_color_theme("blue")
+
 class Window:
     def __init__(self, width, height):
-        self.__root = Tk()
+        self.__root = customtkinter.CTk()
         self.__root.wm_title("AWS Instance Controller")
+        self.__root.minsize(width, height)
         self.__root.canvas = Canvas(width=width, height=height)
         self.__root.canvas.pack()
         self.__root.running = False
@@ -25,9 +30,11 @@ class Window:
 
     def addText(self, instance):
         instance.createInstanceText(self.__root.canvas)
+        self.redraw()
     
     def addControls(self, instance):
         instance.addInstanceControl(self.__root.canvas)
+        self.redraw()
 
     def removeEntry(self, tag):
         self.__root.canvas.delete(tag)
@@ -41,11 +48,11 @@ class Instance:
         self.instance_status = status
         self.button = None
         if previous_instance == None:
-            self.x = 250
+            self.x = 225
         else:
             self.x = previous_instance.x
         if previous_instance == None:
-            self.y = 50
+            self.y = 60
         else:
             self.y = previous_instance.y+50
 
@@ -57,6 +64,7 @@ class Instance:
         canvas.create_text(self.x, self.y, text=self.instance_id, fill="black", font=('Helvetica 15 bold'), tag=self.instance_id)
         canvas.create_text(self.x+400, self.y, text=self.instance_name, fill="black", font=('Helvetica 15 bold'), tag=self.instance_id)
         canvas.create_text(self.x+700, self.y, text=self.instance_status, fill=fill, font=('Helvetica 15 bold'), tag=self.instance_id)
+        canvas.create_line(self.x-100, self.y+26, self.x+900, self.y+26, fill="gray", tag=self.instance_id)
         canvas.pack()
 
     def clearInstanceText(self, canvas):
@@ -82,22 +90,27 @@ class Instance:
                 )
             self.updateInstanceDisplay()        
 
-        self.button = Button(canvas, text=text, command=instanceControl)
+        self.button = customtkinter.CTkButton(canvas, text=text, command=instanceControl)
         self.button.place(x=self.x+800, y=self.y-10)
+        canvas.pack()
     
     def updateInstanceDisplay(self):
-        print("updating...")
         time.sleep(1)
         updated_status = ec2.describe_instances(
             InstanceIds=[self.instance_id],
         )
         self.instance_status = updated_status['Reservations'][0]['Instances'][0]['State']['Name']
-        print(self.instance_status)
+        # print(self.instance_status)
         self.win.removeEntry(self.instance_id)
         self.win.addText(self)
         self.win.addControls(self)
         if self.instance_status == "stopping" or self.instance_status == "pending":
+            print(f"Updating... current status is {self.instance_status}")
+            time.sleep(1)
             self.updateInstanceDisplay()
+        else:
+            print(f"Steady state: {self.instance_status}")
+
         
 ec2 = boto3.client('ec2')
 
