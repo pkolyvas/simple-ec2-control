@@ -111,7 +111,7 @@ class Instance:
             time.sleep(1)
             self.updateInstanceDisplay()
         else:
-            print(f"Steady state: {self.instance_status}")
+            print(f"{self.instance_name} reached steady state: {self.instance_status}")
 
         
 ec2 = boto3.client('ec2')
