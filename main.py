@@ -48,7 +48,7 @@ class Instance:
         self.instance_status = status
         self.button = None
         if previous_instance == None:
-            self.x = 225
+            self.x = 200
         else:
             self.x = previous_instance.x
         if previous_instance == None:
@@ -58,13 +58,15 @@ class Instance:
 
     def createInstanceText(self, canvas):
         if self.instance_status == "running":
-            fill = "red"
+            fill = "green"
+        elif self.instance_status == "pending" or self.instance_status == "stopping":
+            fill = "orange"
         else:
-            fill = "black"
-        canvas.create_text(self.x, self.y, text=self.instance_id, fill="black", font=('Helvetica 15 bold'), tag=self.instance_id)
-        canvas.create_text(self.x+400, self.y, text=self.instance_name, fill="black", font=('Helvetica 15 bold'), tag=self.instance_id)
+            fill = "red"
+        canvas.create_text(self.x, self.y, text=self.instance_id, fill="white", font=('Helvetica 15 bold'), tag=self.instance_id)
+        canvas.create_text(self.x+400, self.y, text=self.instance_name, fill="white", font=('Helvetica 15 bold'), tag=self.instance_id)
         canvas.create_text(self.x+700, self.y, text=self.instance_status, fill=fill, font=('Helvetica 15 bold'), tag=self.instance_id)
-        canvas.create_line(self.x-100, self.y+26, self.x+900, self.y+26, fill="gray", tag=self.instance_id)
+        canvas.create_line(self.x-75, self.y+26, self.x+950, self.y+26, fill="gray", tag=self.instance_id)
         canvas.pack()
 
     def clearInstanceText(self, canvas):
@@ -91,7 +93,7 @@ class Instance:
             self.updateInstanceDisplay()        
 
         self.button = customtkinter.CTkButton(canvas, text=text, command=instanceControl)
-        self.button.place(x=self.x+800, y=self.y-10)
+        self.button.place(x=self.x+800, y=self.y-13)
         canvas.pack()
     
     def updateInstanceDisplay(self):
@@ -105,7 +107,7 @@ class Instance:
         self.win.addText(self)
         self.win.addControls(self)
         if self.instance_status == "stopping" or self.instance_status == "pending":
-            print(f"Updating... current status is {self.instance_status}")
+            print(f"Updating status for {self.instance_name}. Current status is {self.instance_status}")
             time.sleep(1)
             self.updateInstanceDisplay()
         else:
